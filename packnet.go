@@ -42,6 +42,8 @@ func AddFlags(c *Config, fs *flag.FlagSet) {
 		"Network identifier")
 	fs.StringVar(&c.DockerId, "start", "",
 		"Provision the network of the container")
+	fs.StringVar(&c.DockerId, "stop", "",
+		"Provision the network of the container")
 }
 
 func Start(c *Config) error {
@@ -65,6 +67,12 @@ func Start(c *Config) error {
 	return nil
 }
 
+func Stop(c *Config) error {
+	nsMan := network.NewNetnsManager()
+	nsMan.DeleteInterface(c.DockerId)
+	return nil
+}
+
 func main() {
 	config := &Config{
 		ApiServer:     "localhost",
@@ -76,5 +84,7 @@ func main() {
 	flag.Parse()
 	if flag.Lookup("start").Value.String() != "" {
 		Start(config)
+	} else if flag.Lookup("stop").Value.String() != "" {
+		Stop(config)
 	}
 }

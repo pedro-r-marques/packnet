@@ -74,7 +74,7 @@ func (m *NetworkManagerImpl) Build(tenant, networkName, instanceName string) (*I
 	}
 	ip := m.instanceMgr.LocateInstanceIp(network, nic)
 	if ip == nil {
-		return nil, fmt.Errorf("Unable to lookup or create instance-up for instance %s", instanceName)
+		return nil, fmt.Errorf("Unable to lookup or create instance-ip for instance %s", instanceName)
 	}
 	refs, err := network.GetNetworkIpamRefs()
 	if err != nil {

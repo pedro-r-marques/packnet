@@ -171,7 +171,7 @@ func (m *InstanceManagerImpl) LocateInstanceIp(
 	ipObj.SetInstanceIpAddress(address)
 	err = m.client.Create(ipObj)
 	if err != nil {
-		glog.Errorf("Create instance-ip %s: %v", nic.GetName())
+		glog.Errorf("Create instance-ip %s: %v", nic.GetName(), err)
 		return nil
 	}
 	obj, err = m.client.FindByUuid(ipObj.GetType(), ipObj.GetUuid())

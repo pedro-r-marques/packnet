@@ -27,6 +27,7 @@ import (
 
 type NetnsManager interface {
 	CreateInterface(dockerId, macAddress, ipAddress, gateway string) (string, error)
+	DeleteInterface(dockerId string) error
 }
 
 type NetnsManagerImpl struct {
@@ -62,4 +63,9 @@ func (m *NetnsManagerImpl) CreateInterface(dockerId, macAddress, ipAddress, gate
 
 	veth.SetPeerLinkUp()
 	return masterName, nil
+}
+
+func (m *NetnsManagerImpl) DeleteInterface(dockerId string) error {
+	// masterName := fmt.Sprintf("veth-%s", dockerId[0:10])
+	return nil
 }

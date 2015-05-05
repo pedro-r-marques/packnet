@@ -15,9 +15,9 @@ def main():
 	args = parser.parse_args()
 	if args.command == 'add':
 		api = ContrailVRouterApi()
-    	api.add_port(args.vm, args.vmi, args.interface, args.mac_address, port_type='NovaVMPort', display_name=args.dockerId)
+		api.add_port(args.vm, args.vmi, args.interface, args.mac_address, port_type='NovaVMPort', display_name=args.dockerId)
 	else:
-    		print "No command specified"
+		print "No command specified"
 
 
 if __name__ == "__main__":
