@@ -36,6 +36,7 @@ type InstanceMetadata struct {
 	NicId      string
 	MacAddress string
 	IpAddress  string
+	Gateway    string
 }
 
 type NetworkManager interface {
@@ -75,11 +76,18 @@ func (m *NetworkManagerImpl) Build(tenant, networkName, instanceName string) (*I
 	if ip == nil {
 		return nil, fmt.Errorf("Unable to lookup or create instance-up for instance %s", instanceName)
 	}
+	refs, err := network.GetNetworkIpamRefs()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to retrieve network-ipam refs")
+	}
+	attr := refs[0].Attr.(types.VnSubnetsType)
+	gateway := attr.IpamSubnets[0].DefaultGateway
 	mdata := &InstanceMetadata{
 		InstanceId: instance.GetUuid(),
 		NicId:      nic.GetUuid(),
 		MacAddress: nic.GetVirtualMachineInterfaceMacAddresses().MacAddress[0],
 		IpAddress:  ip.GetInstanceIpAddress(),
+		Gateway:    gateway,
 	}
 	return mdata, nil
 }

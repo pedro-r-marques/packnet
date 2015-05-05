@@ -17,6 +17,9 @@ limitations under the License.
 package main
 
 import (
+	"os/exec"
+
+	log "github.com/golang/glog"
 	flag "github.com/spf13/pflag"
 
 	"github.com/pedro-r-marques/packnet/pkg/network"
@@ -43,7 +46,22 @@ func AddFlags(c *Config, fs *flag.FlagSet) {
 
 func Start(c *Config) error {
 	manager := network.NewNetworkManager(c.ApiServer, 8082, c.PrivateSubnet)
-	manager.Build(c.Tenant, c.NetworkName, c.DockerId)
+	metadata, err := manager.Build(c.Tenant, c.NetworkName, c.DockerId)
+	if err != nil {
+		log.Fatal(err)
+	}
+	nsMan := network.NewNetnsManager()
+	masterName, err := nsMan.CreateInterface(c.DockerId, metadata.MacAddress, metadata.IpAddress, metadata.Gateway)
+	if err != nil {
+		log.Fatal(err)
+	}
+	cmd := exec.Command("vrouter-ctl", "--mac-address", metadata.MacAddress,
+		"--vm", metadata.InstanceId, "--vmi", metadata.NicId,
+		"--interface", masterName, "add", c.DockerId)
+	err = cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
 	return nil
 }
 
