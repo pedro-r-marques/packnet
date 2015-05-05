@@ -59,7 +59,7 @@ func (m *InstanceManagerImpl) LocateInstance(tenant, podName string) *types.Virt
 	instance.SetFQName("project", fqn)
 	err = m.client.Create(instance)
 	if err != nil {
-		glog.Errorf("Create %s: %v", podName)
+		glog.Errorf("Create %s: %v", podName, err)
 		return nil
 	}
 	return instance
@@ -176,7 +176,7 @@ func (m *InstanceManagerImpl) LocateInstanceIp(
 	}
 	obj, err = m.client.FindByUuid(ipObj.GetType(), ipObj.GetUuid())
 	if err != nil {
-		glog.Errorf("Get instance-ip %s: %v", ipObj.GetUuid())
+		glog.Errorf("Get instance-ip %s: %v", ipObj.GetUuid(), err)
 		return nil
 	}
 	return ipObj
