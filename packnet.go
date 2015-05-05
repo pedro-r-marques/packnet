@@ -50,7 +50,7 @@ func Start(c *Config) error {
 func main() {
 	config := &Config{
 		ApiServer:     "localhost",
-		Tenant:        "teeno",
+		Tenant:        "teemo",
 		NetworkName:   "default",
 		PrivateSubnet: "10.40.128.0/17",
 	}
