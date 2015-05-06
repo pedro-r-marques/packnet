@@ -99,7 +99,7 @@ func (m *NetworkManagerImpl) LocateNetwork(tenant, networkName string) *types.Vi
 		return obj.(*types.VirtualNetwork)
 	}
 
-	projectId, err := m.client.UuidByName("project", tenant)
+	projectId, err := m.client.UuidByName("project", DefaultDomain+":"+tenant)
 	if err != nil {
 		glog.Infof("GET %s: %v", tenant, err)
 		return nil
