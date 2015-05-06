@@ -49,6 +49,7 @@ func (m *NetnsManagerImpl) CreateInterface(dockerId, macAddress, ipAddress, gate
 		return "", err
 	}
 	veth.SetPeerLinkNsPid(pid)
+	veth.SetLinkUp()
 	peer := veth.PeerNetInterface()
 	netlink.NetworkSetMacAddress(peer, macAddress)
 	cmd := exec.Command("nsenter", "-n", "-t", strconv.Itoa(pid), "ip", "addr", "add",
