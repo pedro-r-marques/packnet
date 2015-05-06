@@ -52,8 +52,11 @@ func (m *NetnsManagerImpl) CreateInterface(dockerId, macAddress, ipAddress, gate
 	veth.SetLinkUp()
 	peer := veth.PeerNetInterface()
 	netlink.NetworkSetMacAddress(peer, macAddress)
+
+	veth.SetPeerLinkUp()
+
 	cmd := exec.Command("nsenter", "-n", "-t", strconv.Itoa(pid), "ip", "addr", "add",
-		fmt.Sprintf("%s/32", ipAddress), "dev", "veth0")
+		fmt.Sprintf("%s/32", ipAddress), "peer", gateway, "dev", "veth0")
 	err = cmd.Run()
 	if err != nil {
 		return "", err
@@ -62,7 +65,6 @@ func (m *NetnsManagerImpl) CreateInterface(dockerId, macAddress, ipAddress, gate
 		"default", "via", gateway)
 	err = cmd.Run()
 
-	veth.SetPeerLinkUp()
 	return masterName, nil
 }
 
