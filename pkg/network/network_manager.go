@@ -85,17 +85,12 @@ func (m *NetworkManagerImpl) Build(tenant, networkName, instanceName string) (*I
 		return nil, fmt.Errorf("IpamSubnets is empty.")
 	}
 
-	gateway := attr.IpamSubnets[0].DefaultGateway
-	if gateway == "" {
-		return nil, fmt.Errorf("Gateway is empty: %+v", attr.IpamSubnets)
-	}
-
 	mdata := &InstanceMetadata{
 		InstanceId: instance.GetUuid(),
 		NicId:      nic.GetUuid(),
 		MacAddress: nic.GetVirtualMachineInterfaceMacAddresses().MacAddress[0],
 		IpAddress:  ip.GetInstanceIpAddress(),
-		Gateway:    gateway,
+		Gateway:    attr.IpamSubnets[0].DefaultGateway,
 	}
 	return mdata, nil
 }

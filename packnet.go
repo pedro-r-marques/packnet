@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"os"
 	"os/exec"
 
 	log "github.com/golang/glog"
@@ -56,13 +57,16 @@ func Start(c *Config) error {
 	masterName, err := nsMan.CreateInterface(c.DockerId, metadata.MacAddress, metadata.IpAddress, metadata.Gateway)
 	if err != nil {
 		log.Fatal(err)
+		os.Exit(-1)
 	}
+
 	cmd := exec.Command("vrouter-ctl", "--mac-address", metadata.MacAddress,
 		"--vm", metadata.InstanceId, "--vmi", metadata.NicId,
 		"--interface", masterName, "add", c.DockerId)
 	err = cmd.Run()
 	if err != nil {
-		log.Fatal(err)
+		out, _ := cmd.CombinedOutput()
+		log.Fatal(err.Error() + ": " + string(out))
 	}
 	return nil
 }
