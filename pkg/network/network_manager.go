@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
-
 	"github.com/Juniper/contrail-go-api"
 	"github.com/Juniper/contrail-go-api/config"
 	"github.com/Juniper/contrail-go-api/types"
@@ -60,64 +58,83 @@ func NewNetworkManager(server string, port int, privateSubnet string) NetworkMan
 }
 
 func (m *NetworkManagerImpl) Build(tenant, networkName, instanceName string) (*InstanceMetadata, error) {
-	network := m.LocateNetwork(tenant, networkName)
-	if network == nil {
-		return nil, fmt.Errorf("Unable to loopkup or create network %s", networkName)
-	}
-	instance := m.instanceMgr.LocateInstance(tenant, instanceName)
-	if instance == nil {
-		return nil, fmt.Errorf("Unable to lookup or create instance %s", instanceName)
-	}
-	nic := m.instanceMgr.LocateInterface(network, instance)
-	if nic == nil {
-		return nil, fmt.Errorf("Unable to lookup or create interface for instance %s", instanceName)
-	}
-	ip := m.instanceMgr.LocateInstanceIp(network, nic)
-	if ip == nil {
-		return nil, fmt.Errorf("Unable to lookup or create instance-ip for instance %s", instanceName)
-	}
-	refs, err := network.GetNetworkIpamRefs()
+	network, err := m.LocateNetwork(tenant, networkName)
+	log.Debug("Located Network: %s", network.GetDisplayName())
 	if err != nil {
-		return nil, fmt.Errorf("Unable to retrieve network-ipam refs")
+		return nil, fmt.Errorf("unable to loopkup or create network: %s", networkName, err)
 	}
-	attr := refs[0].Attr.(types.VnSubnetsType)
-	if len(attr.IpamSubnets) == 0 {
-		return nil, fmt.Errorf("IpamSubnets is empty.")
+
+	instance, err := m.instanceMgr.LocateInstance(tenant, instanceName)
+	log.Debug("Located Instance: %s", instance.GetDisplayName())
+	if err != nil {
+		return nil, fmt.Errorf("unable to lookup or create instance %s: %s", instanceName, err)
+	}
+
+	nic, err := m.instanceMgr.LocateInterface(network, instance)
+	log.Debug("Located NIC: %s", nic.GetDisplayName())
+	if err != nil {
+		return nil, fmt.Errorf("Unable to lookup or create interface for instance %s: %s", instanceName, err)
+	}
+
+	ip, err := m.instanceMgr.LocateInstanceIp(network, nic)
+	log.Debug("Located IP: %s", ip.GetDisplayName())
+	if err != nil {
+		return nil, fmt.Errorf("Unable to lookup or create instance-ip for instance %s: %s", instanceName, err)
+	}
+
+	gateway, err := m.instanceMgr.LocateInstanceGateway(network)
+	log.Debug("Located Gateway: %s", gateway)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get instance gateway: %s", err)
+	}
+
+	macAddress, err := m.instanceMgr.LocateMacAddress(strings.Join(instanceFQName(tenant, instanceName), ":"))
+	log.Debug("Located MacAddress: %s", macAddress)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get instance mac address: %s", err)
 	}
 
 	mdata := &InstanceMetadata{
 		InstanceId: instance.GetUuid(),
 		NicId:      nic.GetUuid(),
-		MacAddress: nic.GetVirtualMachineInterfaceMacAddresses().MacAddress[0],
+		MacAddress: macAddress,
 		IpAddress:  ip.GetInstanceIpAddress(),
-		Gateway:    attr.IpamSubnets[0].DefaultGateway,
+		Gateway:    gateway,
 	}
 	return mdata, nil
 }
 
-func (m *NetworkManagerImpl) LocateNetwork(tenant, networkName string) *types.VirtualNetwork {
+func (m *NetworkManagerImpl) LocateNetwork(tenant, networkName string) (*types.VirtualNetwork, error) {
 	fqn := []string{DefaultDomain, tenant, networkName}
-	obj, err := m.client.FindByName("virtual-network", strings.Join(fqn, ":"))
-	if err == nil {
-		return obj.(*types.VirtualNetwork)
+	vn, err := types.VirtualNetworkByName(m.client, strings.Join(fqn, ":"))
+
+	// If there is an error since it doesn't exist yet, create it.
+	if err != nil && vn == nil {
+		projectName := fmt.Sprintf("%s:%s", DefaultDomain, tenant)
+
+		log.Debug("ProjectByName: %s", projectName)
+		project, err := types.ProjectByName(m.client, projectName)
+		if err != nil {
+			log.Error("GET %s: %v", tenant, err)
+			return nil, err
+		}
+
+		log.Debug("CreateNetworkWithSubnet: project_id=%s, name=%s, prefix=%s", project.GetDisplayName(), networkName, m.privateSubnet)
+		uid, err := config.CreateNetworkWithSubnet(m.client, project.GetUuid(), networkName, m.privateSubnet)
+		if err != nil {
+			log.Error("Create %s: %v", networkName, err)
+			return nil, err
+		}
+
+		log.Debug("VirtualNetworkByUuid: %s", uid)
+		vn, err = types.VirtualNetworkByUuid(m.client, uid)
+		if err != nil {
+			log.Error("GET %s: %v", networkName, err)
+			return nil, err
+		}
+
+		log.Info("Created network %s", networkName)
 	}
 
-	projectId, err := m.client.UuidByName("project", DefaultDomain+":"+tenant)
-	if err != nil {
-		glog.Infof("GET %s: %v", tenant, err)
-		return nil
-	}
-	uid, err := config.CreateNetworkWithSubnet(
-		m.client, projectId, networkName, m.privateSubnet)
-	if err != nil {
-		glog.Infof("Create %s: %v", networkName, err)
-		return nil
-	}
-	obj, err = m.client.FindByUuid("virtual-network", uid)
-	if err != nil {
-		glog.Infof("GET %s: %v", networkName, err)
-		return nil
-	}
-	glog.Infof("Create network %s", networkName)
-	return obj.(*types.VirtualNetwork)
+	return vn, nil
 }

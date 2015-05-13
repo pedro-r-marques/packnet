@@ -20,35 +20,55 @@ import (
 	"os"
 	"os/exec"
 
-	log "github.com/golang/glog"
+	"github.com/op/go-logging"
 	flag "github.com/spf13/pflag"
 
 	"github.com/pedro-r-marques/packnet/pkg/network"
 )
 
+var log = logging.MustGetLogger("packnet")
+
 type Config struct {
 	ApiServer     string
+	ApiPort       int
 	Tenant        string
 	NetworkName   string
 	DockerId      string
 	PrivateSubnet string
 }
 
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
+
+func main() {
+
+	config := &Config{
+		ApiServer:     "localhost",
+		ApiPort:       8082,
+		Tenant:        "teemo",
+		NetworkName:   "default",
+		PrivateSubnet: "10.40.128.0/17",
+	}
+	AddFlags(config, flag.CommandLine)
+	flag.Parse()
+	if flag.Lookup("start").Value.String() != "" {
+		Start(config)
+	} else if flag.Lookup("stop").Value.String() != "" {
+		Stop(config)
+	}
+}
+
 func AddFlags(c *Config, fs *flag.FlagSet) {
-	fs.StringVar(&c.ApiServer, "server", c.ApiServer,
-		"OpenContrail API server.")
-	fs.StringVar(&c.Tenant, "tenant", c.Tenant,
-		"Administrative domain.")
-	fs.StringVar(&c.NetworkName, "network", c.NetworkName,
-		"Network identifier")
-	fs.StringVar(&c.DockerId, "start", "",
-		"Provision the network of the container")
-	fs.StringVar(&c.DockerId, "stop", "",
-		"Provision the network of the container")
+	fs.StringVar(&c.ApiServer, "server", c.ApiServer, "OpenContrail API server.")
+	fs.StringVar(&c.Tenant, "tenant", c.Tenant, "Administrative domain.")
+	fs.StringVar(&c.NetworkName, "network", c.NetworkName, "Network identifier")
+	fs.StringVar(&c.DockerId, "start", "", "Provision the network of the container")
+	fs.StringVar(&c.DockerId, "stop", "", "Provision the network of the container")
 }
 
 func Start(c *Config) error {
-	manager := network.NewNetworkManager(c.ApiServer, 8082, c.PrivateSubnet)
+	manager := network.NewNetworkManager(c.ApiServer, c.ApiPort, c.PrivateSubnet)
 	metadata, err := manager.Build(c.Tenant, c.NetworkName, c.DockerId)
 	if err != nil {
 		log.Fatal(err)
@@ -75,20 +95,4 @@ func Stop(c *Config) error {
 	nsMan := network.NewNetnsManager()
 	nsMan.DeleteInterface(c.DockerId)
 	return nil
-}
-
-func main() {
-	config := &Config{
-		ApiServer:     "localhost",
-		Tenant:        "teemo",
-		NetworkName:   "default",
-		PrivateSubnet: "10.40.128.0/17",
-	}
-	AddFlags(config, flag.CommandLine)
-	flag.Parse()
-	if flag.Lookup("start").Value.String() != "" {
-		Start(config)
-	} else if flag.Lookup("stop").Value.String() != "" {
-		Stop(config)
-	}
 }
