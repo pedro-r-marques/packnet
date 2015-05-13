@@ -38,6 +38,9 @@ type Config struct {
 }
 
 func init() {
+	format := "%{module}[%{pid}]: %{time:2006-01-02T15:04:05Z} [%{shortfile}] %{level:s} - %{message}"
+	logging.SetFormatter(logging.MustStringFormatter(format))
+	logging.SetBackend(logging.NewLogBackend(os.Stderr, "", 0))
 	logging.SetLevel(logging.DEBUG, "")
 }
 
@@ -52,6 +55,10 @@ func main() {
 	}
 	AddFlags(config, flag.CommandLine)
 	flag.Parse()
+
+	// Truncate Id to 11 digits for consistency
+	config.DockerId = config.DockerId[0:10]
+
 	if flag.Lookup("start").Value.String() != "" {
 		Start(config)
 	} else if flag.Lookup("stop").Value.String() != "" {
