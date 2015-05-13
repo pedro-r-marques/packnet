@@ -19,8 +19,6 @@ package network
 import (
 	"strings"
 
-	"github.com/golang/glog"
-
 	"github.com/Juniper/contrail-go-api"
 	"github.com/Juniper/contrail-go-api/config"
 	"github.com/Juniper/contrail-go-api/types"
@@ -43,17 +41,20 @@ const (
 )
 
 func NewAddressAllocator(client contrail.ApiClient, privateSubnet string) AddressAllocator {
-	allocator := new(AddressAllocatorImpl)
-	allocator.client = client
-	allocator.privateSubnet = privateSubnet
-	allocator.initializeAllocator()
-	return allocator
+	a := &AddressAllocatorImpl{
+		client:        client,
+		privateSubnet: privateSubnet,
+	}
+
+	a.initializeAllocator()
+
+	return a
 }
 
 func (a *AddressAllocatorImpl) initializeAllocator() {
-	obj, err := a.client.FindByName("virtual-network", AddressAllocationNetwork)
+	vn, err := types.VirtualNetworkByName(a.client, AddressAllocationNetwork)
 	if err == nil {
-		a.network = obj.(*types.VirtualNetwork)
+		a.network = vn
 		return
 	}
 
@@ -61,14 +62,14 @@ func (a *AddressAllocatorImpl) initializeAllocator() {
 	parent := strings.Join(fqn[0:len(fqn)-1], ":")
 	projectId, err := a.client.UuidByName("project", parent)
 	if err != nil {
-		glog.Fatalf("%s: %v", parent, err)
+		log.Fatalf("%s: %v", parent, err)
 	}
-	_, err = config.CreateNetworkWithSubnet(
-		a.client, projectId, fqn[len(fqn)-1], a.privateSubnet)
+
+	_, err = config.CreateNetworkWithSubnet(a.client, projectId, fqn[len(fqn)-1], a.privateSubnet)
 	if err != nil {
-		glog.Fatalf("%s: %v", parent, err)
+		log.Fatalf("%s: %v", parent, err)
 	}
-	glog.Infof("Created network %s", AddressAllocationNetwork)
+	log.Info("Created network %s", AddressAllocationNetwork)
 }
 
 func (a *AddressAllocatorImpl) allocateIpAddress(uid string) (contrail.IObject, error) {
@@ -77,12 +78,12 @@ func (a *AddressAllocatorImpl) allocateIpAddress(uid string) (contrail.IObject, 
 	ipObj.AddVirtualNetwork(a.network)
 	err := a.client.Create(ipObj)
 	if err != nil {
-		glog.Errorf("Create InstanceIp %s: %v", uid, err)
+		log.Error("Create InstanceIp %s: %v", uid, err)
 		return nil, err
 	}
-	obj, err := a.client.FindByUuid("instance-ip", ipObj.GetUuid())
+	obj, err := types.InstanceIpByUuid(a.client, ipObj.GetUuid())
 	if err != nil {
-		glog.Errorf("Get InstanceIp %s: %v", uid, err)
+		log.Error("Get InstanceIp %s: %v", uid, err)
 		return nil, err
 	}
 	return obj, err
@@ -106,7 +107,7 @@ func (a *AddressAllocatorImpl) ReleaseIpAddress(uid string) {
 	if err != nil {
 		err = a.client.DeleteByUuid("instance-ip", objid)
 		if err != nil {
-			glog.Warningf("Delete instance-ip: %v", err)
+			log.Warning("Delete instance-ip: %v", err)
 		}
 	}
 }
