@@ -107,7 +107,7 @@ func (m *InstanceManagerImpl) LocateInterface(network *types.VirtualNetwork, ins
 		return nil, err
 	}
 
-	_, err = types.VirtualMachineInterfaceByUuid(m.client, nic.GetUuid())
+	nic, err = types.VirtualMachineInterfaceByUuid(m.client, nic.GetUuid())
 	if err != nil {
 		log.Error("Get vmi %s: %v", nic.GetUuid(), err)
 		return nil, err

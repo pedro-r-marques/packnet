@@ -46,16 +46,15 @@ func NewAddressAllocator(client contrail.ApiClient, privateSubnet string) Addres
 		privateSubnet: privateSubnet,
 	}
 
-	a.initializeAllocator()
+	a.network = a.initializeAllocatorNetwork()
 
 	return a
 }
 
-func (a *AddressAllocatorImpl) initializeAllocator() {
+func (a *AddressAllocatorImpl) initializeAllocatorNetwork() *types.VirtualNetwork {
 	vn, err := types.VirtualNetworkByName(a.client, AddressAllocationNetwork)
 	if err == nil {
-		a.network = vn
-		return
+		return vn
 	}
 
 	fqn := strings.Split(AddressAllocationNetwork, ":")
@@ -65,11 +64,16 @@ func (a *AddressAllocatorImpl) initializeAllocator() {
 		log.Fatalf("%s: %v", parent, err)
 	}
 
-	_, err = config.CreateNetworkWithSubnet(a.client, projectId, fqn[len(fqn)-1], a.privateSubnet)
+	netId, err := config.CreateNetworkWithSubnet(a.client, projectId, fqn[len(fqn)-1], a.privateSubnet)
 	if err != nil {
 		log.Fatalf("%s: %v", parent, err)
 	}
 	log.Info("Created network %s", AddressAllocationNetwork)
+	network, err := types.VirtualNetworkByUuid(a.client, netId)
+	if err != nil {
+		log.Fatalf("Get virtual-network %s: %v", netId, err)
+	}
+	return network
 }
 
 func (a *AddressAllocatorImpl) allocateIpAddress(uid string) (contrail.IObject, error) {
